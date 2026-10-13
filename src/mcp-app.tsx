@@ -42,17 +42,21 @@ interface ViewportRect {
   height: number;
 }
 
-/** Convert raw shorthand elements → Excalidraw format (labels → bound text, font fix).
+/** Convert raw shorthand elements → Excalidraw format while retaining saved elements.
  *  Preserves pseudo-elements like cameraUpdate (not valid Excalidraw types). */
 function convertRawElements(els: any[]): any[] {
   const pseudoTypes = new Set(["cameraUpdate", "delete", "restoreCheckpoint"]);
   const pseudos = els.filter((el: any) => pseudoTypes.has(el.type));
   const real = els.filter((el: any) => !pseudoTypes.has(el.type));
+  const saved = new Map(real.filter((el: any) => typeof el.version === "number" && typeof el.id === "string")
+    .map((el: any) => [el.id, el]));
+  // Saved text already has top-left coordinates and measured dimensions; conversion recenters it again.
+  if (saved.size === real.length) return [...real, ...pseudos];
   const withDefaults = real.map((el: any) =>
     el.label ? { ...el, label: { textAlign: "center", verticalAlign: "middle", ...el.label } } : el
   );
   const converted = convertToExcalidrawElements(withDefaults, { regenerateIds: false })
-    .map((el: any) => el.type === "text" ? { ...el, fontFamily: (FONT_FAMILY as any).Excalifont ?? 1 } : el);
+    .map((el: any) => saved.get(el.id) ?? (el.type === "text" ? { ...el, fontFamily: (FONT_FAMILY as any).Excalifont ?? 1 } : el));
   return [...converted, ...pseudos];
 }
 
