@@ -56,7 +56,15 @@ function convertRawElements(els: any[]): any[] {
     el.label ? { ...el, label: { textAlign: "center", verticalAlign: "middle", ...el.label } } : el
   );
   const converted = convertToExcalidrawElements(withDefaults, { regenerateIds: false })
-    .map((el: any) => saved.get(el.id) ?? (el.type === "text" ? { ...el, fontFamily: (FONT_FAMILY as any).Excalifont ?? 1 } : el));
+    .map((el: any) => {
+      const original = saved.get(el.id);
+      if (original) {
+        const addedBindings = (el.boundElements ?? []).filter((binding: any) =>
+          !(original.boundElements ?? []).some((existing: any) => existing.id === binding.id));
+        return addedBindings.length ? { ...original, boundElements: [...(original.boundElements ?? []), ...addedBindings] } : original;
+      }
+      return el.type === "text" ? { ...el, fontFamily: (FONT_FAMILY as any).Excalifont ?? 1 } : el;
+    });
   return [...converted, ...pseudos];
 }
 
